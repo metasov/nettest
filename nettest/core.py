@@ -122,6 +122,8 @@ def main(config_name):
     log.info('Bringing %s up', ifname)
     interface.up().commit()
 
+    log.info('Obtaining IP address')
+
     try:
         acquire_process = subprocess.Popen(
             [dhclient, '-1', '-4', '-v', ifname],
