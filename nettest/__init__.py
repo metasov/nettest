@@ -1,4 +1,4 @@
 from .core import main
 
-def run():
-    return main()
+def run(config_name):
+    return main(config_name)

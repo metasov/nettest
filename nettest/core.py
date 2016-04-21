@@ -23,9 +23,9 @@ def get_config(filename):
     config.read(filename)
     return config
 
-def main():
+def main(config_name):
     logging.basicConfig(level=logging.INFO)
-    config = get_config('config.ini')
+    config = get_config(config_name)
     try:
         ifname = config.get('network', 'interface')
     except (NoSectionError, NoOptionError) as e:
