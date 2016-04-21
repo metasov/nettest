@@ -11,7 +11,7 @@ setup(
     url='https://github.com/metasov/nettest',
     packages=['nettest'],
     install_requires=[
-        'pyroute2>0.3.21',
+        'pyroute2 >= 0.3.21',
     ]
 )
 
