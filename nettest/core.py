@@ -8,15 +8,18 @@ from ConfigParser import (SafeConfigParser,
                           NoSectionError,
                           NoOptionError)
 
+from nettest.exceptions import (
+    Error,
+    ConfigReadError,
+    InterfaceError,
+    ExecutionError,
+    TerminationError,
+    CannotAcquireIP
+)
+
 log = logging.getLogger(__name__)
 
 TIME_QUANTUM = 0.001
-CONFIG_READ_ERROR = 1
-INTERFACE_NOT_FOUND = 2
-EXECUTION_ERROR = 3
-TERMINATION_ERROR = 4
-CANNOT_ACQUIRE_IP = 5
-
 
 def get_config(filename):
     config = SafeConfigParser()
@@ -24,45 +27,43 @@ def get_config(filename):
     return config
 
 def main(config_name):
-    logging.basicConfig(level=logging.INFO)
     config = get_config(config_name)
     try:
         ifname = config.get('network', 'interface')
     except (NoSectionError, NoOptionError) as e:
-        log.critical('Error while getting network.interface from config')
-        return CONFIG_READ_ERROR
+        raise ConfigReadError(
+            'Error while getting network.interface from config')
     
     try:
         dhclient = config.get('dhclient', 'binary')
     except (NoSectionError, NoOptionError) as e:
-        log.critical('Error while getting dhclient.binary from config')
-        return CONFIG_READ_ERROR
+        raise ConfigReadError(
+            'Error while getting dhclient.binary from config')
     
     try:
         execution_timeout = config.getint('dhclient', 'execution_timeout')
     except ValueError:
-        log.critical('dhclient.execution_timeout should be integer')
+        raise ConfigReadError(
+            'dhclient.execution_timeout should be integer')
     except (NoSectionError, NoOptionError):
-        log.critical(
+        raise ConfigReadError(
             'Error while getting dhclient.execution_timeout from config')
-        return CONFIG_READ_ERROR
     
     try:
         termination_timeout = config.getint(
             'dhclient', 'termination_timeout')
     except ValueError:
-        log.critical('dhclient.termination_timeout should be integer')
+        raise ConfigReadError(
+            'dhclient.termination_timeout should be integer')
     except (NoSectionError, NoOptionError):
-        log.critical(
+        raise ConfigReadError(
             'Error while getting dhclient.termination_timeout from config')
-        return CONFIG_READ_ERROR
     
     ipdb = IPDB(mode='implicit')
     ip = IPRoute()
 
     if ifname not in ipdb.interfaces:
-        log.critical('Interface %s cannot be found', ifname)
-        return INTERFACE_NOT_FOUND
+        raise InterfaceError('Interface %s cannot be found' % ifname)
 
     interface = ipdb.interfaces.get(ifname)
 
@@ -77,11 +78,8 @@ def main(config_name):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
     except OSError as e:
-        log.critical(
-            'Cannot execute %s',
-            dhclient,
-            exc_info=1)
-        return EXECUTION_ERROR
+        log.exception()
+        raise ExecutionError('Cannot execute %s' % dhclient)
 
     while release_process.poll() is None:
         time.sleep(TIME_QUANTUM)
@@ -93,11 +91,10 @@ def main(config_name):
             if relase_process.poll() is None:
                 release_process.kill()
                 if release_process.poll() is None:
-                    log.critical(
+                    raise TerminationError(
                         'Cannot kill hanged dhclient process, exiting')
-                    return TERMINATION_ERROR
     
-    time_used = time.time() - start_time
+    release_time_used = time.time() - start_time
     del start_time
     
     if release_process.poll() != 0:
@@ -107,8 +104,9 @@ def main(config_name):
             stdout, stderr)
     del release_process
     
-    log.info('Time used to release IP adderess: %.2f ms', time_used*1000)
-    del time_used
+    log.info(
+        'Time used to release IP adderess: %.2f ms',
+        release_time_used*1000)
 
     log.info('Deleting any left ip addresses')
     if interface.ipaddr:
@@ -131,11 +129,8 @@ def main(config_name):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
     except OSError as e:
-        log.critical(
-            'Cannot execute %s',
-            dhclient,
-            exc_info=1)
-        return EXECUTION_ERROR
+        log.exception()
+        raise ExecutionError('Cannot execute %s' % dhclient)
 
     while acquire_process.poll() is None:
         time.sleep(TIME_QUANTUM)
@@ -147,27 +142,41 @@ def main(config_name):
             if acquire_process.poll() is None:
                 acquire_process.kill()
                 if acquire_process.poll() is None:
-                    log.critical(
+                    raise TerminationError(
                         'Cannot kill hanged dhclient process, exiting')
-                    return TERMINATION_ERROR
-            return CANNOT_ACQUIRE_IP
+            raise CannotAcquireIP('Dhclient timeout exceeded')
     
-    time_used = time.time() - start_time
+    acquire_time_used = time.time() - start_time
     del start_time
 
     if acquire_process.poll() != 0:
         stdout, stderr = acquire_process.communicate()
-        log.error(
+        raise CannotAcquireIP(
             'Dhclient cannot acquire IP address. Output was: %s %s',
             stdout, stderr)
-        return CANNOT_ACQUIRE_IP
 
     log.info(
         'Time used to up interface and acquire '
-        'ip address: %.2f ms', time_used * 1000)
+        'ip address: %.2f ms', acquire_time_used * 1000)
 
-    return 0
+    return release_time_used, acquire_time_used
 
 if __name__ == '__main__':
-    retno = main() or 0
-    exit(retno)
+    import sys
+    try:
+        config_name = sys.argv[1]
+    except IndexError:
+        sys.stderr.write('Please specify config file name\n')
+        exit(998)
+
+    logging.basicConfig(level=logging.INFO)
+    try:
+        release_time, acquire_time = main(config_name)
+    except Error as e:
+        log.critical(str(e))
+        exit(e.retval)
+    except Exception:
+        log.exception('Unhandled exception in main()')
+        exit(999)
+    exit(0)
+
