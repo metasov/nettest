@@ -4,17 +4,12 @@ import time
 import subprocess
 
 from pyroute2 import IPDB, IPRoute
-from ConfigParser import (NoSectionError,
-                          NoOptionError)
 
-from nettest.exceptions import (
-    Error,
-    ConfigReadError,
-    InterfaceError,
-    ExecutionError,
-    TerminationError,
-    CannotAcquireIP
-)
+from nettest.config import NettestConfig
+from nettest.exceptions import (InterfaceError,
+                                ExecutionError,
+                                TerminationError,
+                                CannotAcquireIP)
 
 log = logging.getLogger(__name__)
 
@@ -22,36 +17,11 @@ TIME_QUANTUM = 0.001
 
 
 def test_interface(config):
-    try:
-        ifname = config.get('network', 'interface')
-    except (NoSectionError, NoOptionError) as e:
-        raise ConfigReadError(
-            'Error while getting network.interface from config')
-    
-    try:
-        dhclient = config.get('dhclient', 'binary')
-    except (NoSectionError, NoOptionError) as e:
-        raise ConfigReadError(
-            'Error while getting dhclient.binary from config')
-    
-    try:
-        execution_timeout = config.getint('dhclient', 'execution_timeout')
-    except ValueError:
-        raise ConfigReadError(
-            'dhclient.execution_timeout should be integer')
-    except (NoSectionError, NoOptionError):
-        raise ConfigReadError(
-            'Error while getting dhclient.execution_timeout from config')
-    
-    try:
-        termination_timeout = config.getint(
-            'dhclient', 'termination_timeout')
-    except ValueError:
-        raise ConfigReadError(
-            'dhclient.termination_timeout should be integer')
-    except (NoSectionError, NoOptionError):
-        raise ConfigReadError(
-            'Error while getting dhclient.termination_timeout from config')
+    assert isinstance(config, NettestConfig)
+    ifname = config.get('network.interface')
+    dhclient = config.get('dhclient.binary')
+    execution_timeout = config.getint('dhclient.execution_timeout')
+    termination_timeout = config.getint('dhclient.termination_timeout')
     
     ipdb = IPDB(mode='implicit')
     ip = IPRoute()
@@ -156,23 +126,4 @@ def test_interface(config):
         'ip address: %.2f ms', acquire_time_used * 1000)
 
     return release_time_used, acquire_time_used
-
-if __name__ == '__main__':
-    import sys
-    try:
-        config_name = sys.argv[1]
-    except IndexError:
-        sys.stderr.write('Please specify config file name\n')
-        exit(998)
-
-    logging.basicConfig(level=logging.INFO)
-    try:
-        release_time, acquire_time = main(config_name)
-    except Error as e:
-        log.critical(str(e))
-        exit(e.retval)
-    except Exception:
-        log.exception('Unhandled exception in main()')
-        exit(999)
-    exit(0)
 

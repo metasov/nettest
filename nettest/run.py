@@ -1,16 +1,9 @@
 import sys
 import logging
 
-from ConfigParser import SafeConfigParser
+from nettest.config import NettestConfig
 from nettest.interface import test_interface
-from nettest.exceptions import (
-    Error,
-    ConfigReadError,
-    InterfaceError,
-    ExecutionError,
-    TerminationError,
-    CannotAcquireIP
-)
+from nettest.exceptions import Error
 
 
 log = logging.getLogger(__name__)
@@ -32,7 +25,7 @@ if __name__ == '__main__':
         sys.stderr.write('Please specify config file name\n')
         exit(998)
 
-    config = SafeConfigParser()
+    config = NettestConfig()
     config.read(config_name)
 
     logging.basicConfig(level=logging.INFO)
