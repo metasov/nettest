@@ -16,14 +16,14 @@ class NettestConfig(SafeConfigParser):
             if default is not None:
                 return default
             raise ConfigReadError(
-                'Error reading %s from config. Section %s not found.',
-                full_name, section)
+                'Error reading %s from config. Section %s not found.' % (
+                    full_name, section))
         except NoOptionError:
             if default is not None:
                 return default
             raise ConfigReadError(
-                'Error reading %s from config. Option %s not found.',
-                full_name, option)
+                'Error reading %s from config. Option %s not found.' % (
+                    full_name, option))
         return result
 
     def getint(self, full_name, default=None):

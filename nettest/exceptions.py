@@ -5,7 +5,7 @@ class Error(Exception):
 
 class ConfigReadError(Error):
     def __init__(self, msg='', retval=1):
-        super(CondigReadError, self).__init__(msg, retval)
+        super(ConfigReadError, self).__init__(msg, retval)
 
 class InterfaceError(Error):
     def __init__(self, msg='', retval=2):

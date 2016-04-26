@@ -1,9 +1,10 @@
 import sys
 import logging
 
+from nettest.exceptions import Error
 from nettest.config import NettestConfig
 from nettest.interface import test_interface
-from nettest.exceptions import Error
+from nettest.http import test_http
 
 
 log = logging.getLogger(__name__)
@@ -12,11 +13,21 @@ def run(config):
     try:
         release_time, acquire_time = test_interface(config)
     except Error as e:
-        log.critical(str(e))
+        log.error('%s: %s', e.__class__.__name__, e)
+        log.error('Error testing interface, cannot continue')
         return e.retval
     except Exception:
-        log.exception('Unhandled exception in test_interface()')
-        return 999
+        log.exception('Error testing interface, cannot continue')
+        raise
+    
+    try:
+        http_speed = test_http(config)
+    except Error as e:
+        log.error(str(e))
+        http_speed = None
+    
+    return 0
+
 
 if __name__ == '__main__':
     try:
