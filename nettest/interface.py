@@ -4,8 +4,7 @@ import time
 import subprocess
 
 from pyroute2 import IPDB, IPRoute
-from ConfigParser import (SafeConfigParser,
-                          NoSectionError,
+from ConfigParser import (NoSectionError,
                           NoOptionError)
 
 from nettest.exceptions import (
@@ -21,13 +20,8 @@ log = logging.getLogger(__name__)
 
 TIME_QUANTUM = 0.001
 
-def get_config(filename):
-    config = SafeConfigParser()
-    config.read(filename)
-    return config
 
-def main(config_name):
-    config = get_config(config_name)
+def test_interface(config):
     try:
         ifname = config.get('network', 'interface')
     except (NoSectionError, NoOptionError) as e:

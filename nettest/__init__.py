@@ -1,4 +1,2 @@
-from .core import main
+from .run import run
 
-def run(config_name):
-    return main(config_name)
