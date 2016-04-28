@@ -79,7 +79,7 @@ def test_http(config):
 
     log.info('Average speed: %.3f Mbit/s. '
              'Min speed: %.3f Mbit/s '
-             'Max speed: %.3f.',
+             'Max speed: %.3f. Mbit/s',
              speed / M,
              min_speed / M,
              max_speed / M)
