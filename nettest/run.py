@@ -7,11 +7,13 @@ from nettest.exceptions import Error
 from nettest.config import NettestConfig
 from nettest.interface import test_interface
 from nettest.http import test_http
+from nettest.storage import NettestStorage
 from nettest import ftp
 
 
 def run(config):
     log = logging.getLogger(__name__)
+    storage = NettestStorage(config)
     try:
         release_time, acquire_time = test_interface(config)
     except Error as e:
@@ -40,6 +42,9 @@ def run(config):
         log.error(str(e))
         ftp_upload_speed = None
     
+    storage.update(
+        acquire_time, http_speed, ftp_download_speed, ftp_upload_speed)
+
     return 0
 
 
