@@ -1,4 +1,5 @@
 import sys
+import os
 import logging
 
 from nettest.exceptions import Error
@@ -39,7 +40,13 @@ if __name__ == '__main__':
     config = NettestConfig()
     config.read(config_name)
 
-    logging.basicConfig(level=logging.INFO)
+    loglevel = logging.ERROR
+    if os.environ.get('DEBUG', '0') == '1':
+        loglevel = logging.INFO
+    elif os.environ.get('DEBUG', '0') == '2':
+        loglevel = logging.DEBUG
+
+    logging.basicConfig(level=loglevel)
     
     exit(run(config))
 
