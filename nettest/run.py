@@ -6,6 +6,7 @@ from nettest.exceptions import Error
 from nettest.config import NettestConfig
 from nettest.interface import test_interface
 from nettest.http import test_http
+from nettest import ftp
 
 
 log = logging.getLogger(__name__)
@@ -26,6 +27,18 @@ def run(config):
     except Error as e:
         log.error(str(e))
         http_speed = None
+    
+    try:
+        ftp_download_speed = ftp.test_download(config)
+    except Error as e:
+        log.error(str(e))
+        ftp_download_speed = None
+    
+    try:
+        ftp_upload_speed = ftp.test_upload(config)
+    except Error as e:
+        log.error(str(e))
+        ftp_upload_speed = None
     
     return 0
 

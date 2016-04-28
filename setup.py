@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='nettest',
-    version='0.1.2',
+    version='0.2.0',
     description='Utility to measure network service SLA',
     author='Metasov Arthur',
     author_email='metasov@gmail.com',
