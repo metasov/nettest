@@ -7,3 +7,9 @@ Requirements:
 * python2
 * pyroute2
 * dhclient
+
+Installation:
+    python setup.py install
+
+Usage:
+    python -m nettest.run path/to/config.ini

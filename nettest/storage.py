@@ -68,8 +68,8 @@ class NettestStorage(object):
         self.cursor.execute("""
             SELECT id, datetime, interface, http, ftp_down, ftp_up
             FROM test
-            WHERE date(datetime) = %s
-        """, date)
+            WHERE date(datetime) = ?
+        """, (date,))
         for row in cursor.fetchall():
             rowid, datetime, interface, http, ftp_down, ftp_up = row
             data.append({
