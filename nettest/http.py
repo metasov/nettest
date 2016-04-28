@@ -15,7 +15,7 @@ def test_http(config):
     assert isinstance(config, NettestConfig)
     url = config.get('http.url')
     timeout = config.get('http.timeout', 10)
-    chunk_size = config.get('http.chunk_size', 1024*1024)
+    chunk_size = config.get('http.chunk_size', 1024*1000)
     
     
     start_time = time.time()
@@ -66,8 +66,8 @@ def test_http(config):
             'Read %.1f Kb / %.2f Mb. '
             'Speed: %.2f Mb/s. '
             'Avg speed %.2f Mb/s',
-            chunk_size / K,
-            total_bytes / M,
+            float(chunk_size) / K,
+            float(total_bytes) / M,
             speed / M,
             avg_speed / M)
     
