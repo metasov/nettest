@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+import logging.config
 
 from nettest.exceptions import Error
 from nettest.config import NettestConfig
@@ -9,9 +10,8 @@ from nettest.http import test_http
 from nettest import ftp
 
 
-log = logging.getLogger(__name__)
-
 def run(config):
+    log = logging.getLogger(__name__)
     try:
         release_time, acquire_time = test_interface(config)
     except Error as e:
@@ -53,13 +53,7 @@ if __name__ == '__main__':
     config = NettestConfig()
     config.read(config_name)
 
-    loglevel = logging.ERROR
-    if os.environ.get('DEBUG', '0') == '1':
-        loglevel = logging.INFO
-    elif os.environ.get('DEBUG', '0') == '2':
-        loglevel = logging.DEBUG
-
-    logging.basicConfig(level=loglevel)
+    logging.config.fileConfig(config_name)
     
     exit(run(config))
 

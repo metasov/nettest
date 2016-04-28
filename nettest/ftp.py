@@ -9,14 +9,15 @@ except ImportError:
 from nettest.config import NettestConfig
 from nettest.exceptions import ConfigReadError, ExecutionError
 
-log = logging.getLogger(__name__)
-
 K = 1024
 M = K * K
 G = M * M
 
-class FtpDownloadStatistics(object):
+
+class FtpStatistics(object):
     def __init__(self):
+        self._log = logging.getLogger(
+            '.'.join([__name__, self.__class__.__name__]))
         self._total_bytes = 0
         self._start_time = time.time()
         self._last_time = self._start_time
@@ -45,7 +46,7 @@ class FtpDownloadStatistics(object):
     def time(self):
         return self._last_time - self._start_time
 
-    def receive_chunk(self, data):
+    def process_chunk(self, data):
         if not data:
             return
         chunk_size = len(data)
@@ -66,8 +67,8 @@ class FtpDownloadStatistics(object):
             else:
                 self._min_speed = min(self._min_speed, chunk_speed)
 
-            log.debug(
-                'Received %.1f Kb / %.2f Mb in %.2f sec. '
+            self._log.debug(
+                'Processed %.1f Kb / %.2f Mb in %.2f sec. '
                 'Speed: %.2f Mbit/s',
                 float(chunk_size) / K,
                 float(self._total_bytes) / M,
@@ -76,6 +77,7 @@ class FtpDownloadStatistics(object):
 
 
 def test_upload(config):
+    log = logging.getLogger(__name__)
     address = config.get('ftp.address')
     username = config.get('ftp.username', 'anonymous')
     password = config.get('ftp.password', 'anonymous@example.com')
@@ -114,7 +116,7 @@ def test_upload(config):
         # there is no such file
         pass
     except ftplib.error_perm:
-        log.error(
+        log.info(
             'Cannot delete existing file %s on FTP',
             filename)
     
@@ -126,20 +128,29 @@ def test_upload(config):
 
     data.seek(0)
 
+    stats = FtpStatistics()
+
     log.debug('Starting FTP upload')
 
-    start_time = time.time()
-    ftp.storbinary('STOR ' + filename, data, chunk_size)
-    stop_time = time.time()
-    
-    speed = size / (stop_time - start_time)
+    ftp.storbinary(
+        'STOR ' + filename, data, chunk_size, stats.process_chunk)
     
     log.debug('Done.')
-    log.info('FTP upload speed: %.3f Mbit/s', speed / M)
-
-    return speed
+    log.info(
+        'Sent %.2f Mb in %.2f seconds. '
+        'Average speed: %.3f Mbits/s. '
+        'Max speed: %.3f Mbits/s. '
+        'Min speed: %.3f Mbits/s. ',
+        stats.size / M,
+        stats.time,
+        stats.average_speed / M,
+        stats.max_speed / M,
+        stats.min_speed / M
+    )
+    return stats.average_speed
 
 def test_download(config):
+    log = logging.getLogger(__name__)
     address = config.get('ftp.address')
     username = config.get('ftp.username', 'anonymous')
     password = config.get('ftp.password', 'anonymous@example.com')
@@ -155,12 +166,12 @@ def test_download(config):
     if directory != '':
         ftp.cwd(directory)
 
-    stats = FtpDownloadStatistics()
+    stats = FtpStatistics()
 
-    ftp.retrbinary('RETR '+filename, stats.receive_chunk, chunk_size)
+    ftp.retrbinary('RETR '+filename, stats.process_chunk, chunk_size)
 
     log.info(
-        'Received %.2f Mb in %d seconds. '
+        'Received %.2f Mb in %.2f seconds. '
         'Average speed: %.3f Mbits/s. '
         'Max speed: %.3f Mbits/s. '
         'Min speed: %.3f Mbits/s. ',

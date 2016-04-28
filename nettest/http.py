@@ -6,13 +6,13 @@ import urllib2
 from nettest.config import NettestConfig
 from nettest.exceptions import ExecutionError
 
-log = logging.getLogger(__name__)
 
 K = 1024
 M = K * K
 
 def test_http(config):
     assert isinstance(config, NettestConfig)
+    log = logging.getLogger(__name__)
     url = config.get('http.url')
     timeout = config.get('http.timeout', 10)
     chunk_size = config.get('http.chunk_size', 1024*1000)

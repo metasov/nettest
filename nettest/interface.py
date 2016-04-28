@@ -11,12 +11,12 @@ from nettest.exceptions import (InterfaceError,
                                 TerminationError,
                                 CannotAcquireIP)
 
-log = logging.getLogger(__name__)
 
 TIME_QUANTUM = 0.001
 
 
 def test_interface(config):
+    log = logging.getLogger(__name__)
     assert isinstance(config, NettestConfig)
     ifname = config.get('network.interface')
     dhclient = config.get('dhclient.binary')
