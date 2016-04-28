@@ -10,20 +10,15 @@ from nettest.exceptions import ExecutionError
 K = 1024
 M = K * K
 
-def test_http(config):
-    assert isinstance(config, NettestConfig)
+def _test(url, timeout, chunk_size): 
     log = logging.getLogger(__name__)
-    url = config.get('http.url')
-    timeout = config.get('http.timeout', 10)
-    chunk_size = config.get('http.chunk_size', 1024*1000)
-    
     
     start_time = time.time()
 
     log.info('Start fetching %s', url)
 
     try:
-        req = urllib2.urlopen(url)
+        req = urllib2.urlopen(url, timeout=float(timeout))
     except (urllib2.URLError, urllib2.HTTPError) as e:
         log.error(
             'Error while trying to connect to url %s: %s',
@@ -35,7 +30,11 @@ def test_http(config):
     max_speed = None
     while True:
         chunk_start_time = time.time()
-        data = req.read(chunk_size)
+        try:
+            data = req.read(chunk_size)
+        except IOError as e:
+            raise ExecutionError(
+                'IOError while reading file by HTTP: %s' % e)
         chunk_stop_time = time.time()
         
         execution_time = chunk_stop_time - start_time
@@ -85,4 +84,18 @@ def test_http(config):
              max_speed / M)
 
     return speed
+
+def test_http(config): 
+    assert isinstance(config, NettestConfig)
+    http_keys = config.get('http.keys')
+    speeds = []
+    for key in http_keys.split(','):
+        key = key.strip()
+        timeout = config.get('http_%s.timeout' % key, 10)
+        chunk_size = config.get(
+            'http_%s.chunk_size' % key, 1024*1000)
+        url = config.get('http_%s.url' % key)
+        
+        speeds.append(_test(url, timeout, chunk_size))
+    return tuple(speeds)
 

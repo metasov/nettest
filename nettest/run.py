@@ -9,6 +9,7 @@ from nettest.interface import test_interface
 from nettest.http import test_http
 from nettest.storage import NettestStorage
 from nettest import ftp
+from nettest.dns import test_dns
 
 
 def run(config):
@@ -24,27 +25,32 @@ def run(config):
         log.exception('Error testing interface, cannot continue')
         raise
     
-    try:
-        http_speed = test_http(config)
-    except Error as e:
-        log.error(str(e))
-        http_speed = None
+    dns_time = test_dns(config)
     
     try:
-        ftp_download_speed = ftp.test_download(config)
+        http_speeds = test_http(config)
     except Error as e:
         log.error(str(e))
-        ftp_download_speed = None
+        http_speeds = None
     
     try:
-        ftp_upload_speed = ftp.test_upload(config)
+        ftp_download_speeds = ftp.test_download(config)
     except Error as e:
         log.error(str(e))
-        ftp_upload_speed = None
+        ftp_download_speeds = None
     
-    storage.update(
-        acquire_time, http_speed, ftp_download_speed, ftp_upload_speed)
-
+    try:
+        ftp_upload_speeds = ftp.test_upload(config)
+    except Error as e:
+        log.error(str(e))
+        ftp_upload_speeds = None
+    
+    storage.update(acquire_time,
+                   dns_time,
+                   http_speeds,
+                   ftp_download_speeds,
+                   ftp_upload_speeds)
+    
     return 0
 
 

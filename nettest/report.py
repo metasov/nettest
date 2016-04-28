@@ -13,43 +13,57 @@ import emails
 from nettest.config import NettestConfig
 from nettest.storage import NettestStorage
 
-def make_html_report(data):
-    chunks = [
-        "<html><head><title></title></head>"
-        "<body><table><tr>"
-        " <th>Timestamp</th><th>Interface+DHCP up (sec)</th>"
-        " <th>Http download (bits/s)</th><th>FTP download (bits/s)</th>"
-        " <th>FTP upload (bits/s)</th>"
-        "</tr>"]
+
+def html_report_generator(keys, data):
+
+    all_tests = len(data)
+    failed_dns_tests = len(filter(lambda t: t['dns'] is None, data))
+    percent_of_success = 100.0 * (all_tests - failed_dns_tests) / all_tests 
+    yield "<html><head><title></title></head><body>"
+    yield "Percent of success: %.2f <br/>" % percent_of_success
+    yield "<table><tr>"
+    for key in keys:
+        if key in ('rowid',):
+            continue
+        title = key.replace("_", " ").capitalize()
+        yield "<th>" + title + "</th>"
+    yield "</tr>"
+
     for row in data:
-        new_row = {'datetime': row['datetime']}
-        for key in ['interface', 'http', 'ftp_down', 'ftp_up']:
-            if row[key] is None:
-                new_row[key] = 'FAILED'
+        yield"<tr>"
+        for key in keys:
+            if key in ('rowid',):
+                continue
+            
+            yield"<td>"
+            
+            if key in ('datetime',):
+                yield str(row[key])
+            elif row[key] is None:
+                yield '<span style="color: red">FAILED</span>'
             else:
-                new_row[key] = '%.3f' % row[key]
-        chunks.append(
-            "<tr>"
-            "<td>%(datetime)s</td>"
-            "<td>%(interface)s</td>"
-            "<td>%(http)s</td>"
-            "<td>%(ftp_down)s</td>"
-            "<td>%(ftp_up)s</td>"
-            "</tr>" % new_row)
-    chunks.append("</body></html>")
+                yield '%.3f' % row[key]
 
-    return "\n".join(chunks)
+            yield "</td>"
+        yield "</tr>"
+    yield "</body></html>"
 
-def make_csv_report(data):
+def make_html_report(keys, data):
+    return "".join(html_report_generator(keys, data))
+
+def make_csv_report(keys, data):
     result = StringIO.StringIO()
-    writer = csv.DictWriter(
-        result,
-        ['datetime', 'interface', 'http', 'ftp_down', 'ftp_up'])
+    filtered_keys = [k for k in keys if k != 'rowid']
+    writer = csv.DictWriter(result, filtered_keys)
     writer.writeheader()
     for row in data:
-        new_row = {'datetime': row['datetime']}
-        for key in ['interface', 'http', 'ftp_down', 'ftp_up']:
-            if row[key] is None:
+        new_row = {}
+        for key in filtered_keys:
+            if key in ('rowid',):
+                continue
+            elif key in ('datetime',): 
+                new_row[key] = row[key]
+            elif row[key] is None:
                 new_row[key] = 'FAILED'
             else:
                 new_row[key] = '%.3f' % row[key]
@@ -77,14 +91,15 @@ def send_report(config):
             'email.day should be only "today" or "yesterday" ')
     storage = NettestStorage(config, read_only=True)
     data = storage.get_entries_for_date(day)
+    keys = storage.keys()
     
     message = emails.html(
-        html = make_html_report(data),
+        html = make_html_report(keys, data),
         mail_from=(email_from_name, email_from_email),
         subject="Nettest report for %s" % day)
 
     message.attach(
-        data=make_csv_report(data),
+        data=make_csv_report(keys, data),
         filename='nettest_report-%s.csv' % day.strftime('%Y-%m-%d'))
     
     for address in email_to:

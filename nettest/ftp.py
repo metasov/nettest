@@ -76,17 +76,10 @@ class FtpStatistics(object):
                 chunk_speed / M)
 
 
-def test_upload(config):
+def _test_upload(address, username, password,
+                 directory, filename, size,
+                 chunk_size, timeout):
     log = logging.getLogger(__name__)
-    address = config.get('ftp.address')
-    username = config.get('ftp.username', 'anonymous')
-    password = config.get('ftp.password', 'anonymous@example.com')
-    
-    directory = config.get('ftp.upload_directory', '')
-    filename = config.get('ftp.upload_filename')
-    size = config.get('ftp.upload_size')
-
-    chunk_size = config.get('ftp.chunk_size', 1024 * 1000)
     
     size = size.replace(' ', '').replace('\t', '')
     try:
@@ -100,12 +93,15 @@ def test_upload(config):
             size = int(size)
     except (ValueError, TypeError):
         raise ConfigReadError(
-            'ftp.upload_size should be integer optionally '
+            'ftp upload_size should be integer optionally '
             'followed by K, M or G modificator. Found: %s', 
             repr(size))
     
-    ftp = ftplib.FTP(address)
-    ftp.login(username, password)
+    try:
+        ftp = ftplib.FTP(address, username, password, '', timeout)
+    except IOError as e:
+        raise ExecutionError(
+            'IOError while connecting to FTP: %s' % e)
     
     if directory != '':
         ftp.cwd(directory)
@@ -132,8 +128,14 @@ def test_upload(config):
 
     log.debug('Starting FTP upload')
 
-    ftp.storbinary(
-        'STOR ' + filename, data, chunk_size, stats.process_chunk)
+    try:
+        ftp.storbinary('STOR ' + filename,
+                       data,
+                       chunk_size,
+                       stats.process_chunk)
+    except IOError as e:
+        raise ExecutionError(
+            'IOError while uploading file to FTP: %s' % e)
     
     log.debug('Done.')
     log.info(
@@ -149,26 +151,55 @@ def test_upload(config):
     )
     return stats.average_speed
 
-def test_download(config):
-    log = logging.getLogger(__name__)
-    address = config.get('ftp.address')
-    username = config.get('ftp.username', 'anonymous')
-    password = config.get('ftp.password', 'anonymous@example.com')
+def test_upload(config):
+    speeds = []
+    for key in config.get('ftp.keys').split(','):
+        key = key.strip()
+        address = config.get('ftp_%s.address' % key)
+        username = config.get('ftp_%s.username' % key,
+                              'anonymous')
+        password = config.get('ftp_%s.password' % key,
+                              'anonymous@example.com')
+        
+        directory = config.get('ftp_%s.upload_directory' % key,
+                               '')
+        filename = config.get('ftp_%s.upload_filename' % key)
+        size = config.get('ftp_%s.upload_size' % key)
 
-    directory = config.get('ftp.directory', '')
-    filename = config.get('ftp.filename')
+        chunk_size = config.get('ftp_%s.chunk_size' % key,
+                                1024 * 1000)
+        timeout = config.get('ftp_%s.timeout' % key, 30)
+        
+        speeds.append(
+            _test_upload(
+                address, username, password, directory,
+                filename, size, chunk_size, timeout))
     
-    chunk_size = config.get('ftp.chunk_size', 1024 * 1000)
+    return tuple(speeds)
 
-    ftp = ftplib.FTP(address)
-    ftp.login(username, password)
+def _test_download(address, username, password,
+                   directory, filename, chunk_size,
+                   timeout):
+    log = logging.getLogger(__name__)
+
+    try:
+        ftp = ftplib.FTP(address, username, password, '', timeout)
+    except IOError as e:
+        raise ExecutionError(
+            'IOError while connecting to FTP: %s' % e)
 
     if directory != '':
         ftp.cwd(directory)
 
     stats = FtpStatistics()
-
-    ftp.retrbinary('RETR '+filename, stats.process_chunk, chunk_size)
+    
+    try:
+        ftp.retrbinary('RETR '+filename,
+                       stats.process_chunk,
+                       chunk_size)
+    except IOError as e:
+        raise ExecutionError(
+            'IOError while downloading from FTP: %s' % e) 
 
     log.info(
         'Received %.2f Mb in %.2f seconds. '
@@ -185,4 +216,27 @@ def test_download(config):
     ftp.close()
 
     return stats.average_speed
+
+def test_download(config):
+    speeds = []
+    for key in config.get('ftp.keys').split(','):
+        key = key.strip()
+        address = config.get('ftp_%s.address' % key)
+        username = config.get('ftp_%s.username' % key,
+                              'anonymous')
+        password = config.get('ftp_%s.password' % key,
+                              'anonymous@example.com')
+
+        directory = config.get('ftp_%s.directory' % key, '')
+        filename = config.get('ftp_%s.filename' % key)
+        
+        chunk_size = config.get('ftp_%s.chunk_size' % key,
+                                1024 * 1000)
+        timeout = config.get('ftp_%s.timeout' % key, 30)
+
+        speeds.append(
+            _test_download(
+                address, username, password,
+                directory, filename, chunk_size, timeout))
+    return tuple(speeds)
 
