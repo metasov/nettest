@@ -53,6 +53,7 @@ class NettestStorage(object):
                 datetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 interface REAL DEFAULT NULL,
                 dns REAL DEFAULT NULL,
+                ping REAL DEFAULT NULL,
                 %(http)s,
                 %(ftp_down)s,
                 %(ftp_up)s
@@ -70,11 +71,11 @@ class NettestStorage(object):
         self.db.commit()
         return rowid
 
-    def update(self, interface, dns, http, ftp_down, ftp_up):
+    def update(self, interface, dns, ping, http, ftp_down, ftp_up):
         if self._read_only:
             return
         
-        values =  [interface, dns]
+        values =  [interface, dns, ping]
        
         http = http or [None,] * len(self.http_keys)
         ftp_down = ftp_down or [None,] * len(self.ftp_keys)
@@ -98,6 +99,7 @@ class NettestStorage(object):
             UPDATE tests SET
                 interface = ?,
                 dns = ?,
+                ping = ?,
                 %(http)s,
                 %(ftp_down)s,
                 %(ftp_up)s
@@ -109,7 +111,7 @@ class NettestStorage(object):
         self.db.commit()
 
     def keys(self):
-        result = ['rowid', 'datetime', 'interface', 'dns']
+        result = ['rowid', 'datetime', 'interface', 'dns', 'ping']
         for key in self.http_keys:
             result.append('http_'+key)
         for key in self.ftp_keys:

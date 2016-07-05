@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='nettest',
-    version='0.5.0',
+    version='0.5.2',
     description='Utility to measure network service SLA',
     author='Metasov Arthur',
     author_email='metasov@gmail.com',
@@ -12,7 +12,8 @@ setup(
     packages=['nettest'],
     install_requires=[
         'pyroute2 >= 0.3.21',
-        'emails'
+        'emails',
+        'ping'
     ]
 )
 

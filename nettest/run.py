@@ -10,6 +10,7 @@ from nettest.http import test_http
 from nettest.storage import NettestStorage
 from nettest import ftp
 from nettest.dns import test_dns
+from nettest.nettest_ping import test_ping
 
 
 def run(config):
@@ -26,6 +27,8 @@ def run(config):
         raise
     
     dns_time = test_dns(config)
+    
+    ping_rtt = test_ping(config)
     
     try:
         http_speeds = test_http(config)
@@ -45,8 +48,10 @@ def run(config):
         log.error(str(e))
         ftp_upload_speeds = None
     
+
     storage.update(acquire_time,
                    dns_time,
+                   ping_rtt,
                    http_speeds,
                    ftp_download_speeds,
                    ftp_upload_speeds)
