@@ -10,6 +10,7 @@ from nettest.exceptions import ExecutionError
 K = 1024
 M = K * K
 
+
 def _test(url, timeout, chunk_size): 
     log = logging.getLogger(__name__)
     
@@ -26,6 +27,7 @@ def _test(url, timeout, chunk_size):
         raise ExecutionError('Cannot fetch url by HTTP')
     
     total_bytes = 0
+    avg_speed = 0
     min_speed = None
     max_speed = None
     while True:
@@ -79,11 +81,12 @@ def _test(url, timeout, chunk_size):
     log.info('Average speed: %.3f Mbit/s. '
              'Min speed: %.3f Mbit/s '
              'Max speed: %.3f. Mbit/s',
-             speed / M,
+             avg_speed / M,
              min_speed / M,
              max_speed / M)
 
-    return speed
+    return avg_speed
+
 
 def test_http(config): 
     assert isinstance(config, NettestConfig)
