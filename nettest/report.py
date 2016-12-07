@@ -15,10 +15,13 @@ from nettest.storage import NettestStorage
 
 
 def html_report_generator(keys, data):
-
     all_tests = len(data)
     failed_dns_tests = len(filter(lambda t: t['dns'] is None, data))
-    percent_of_success = 100.0 * (all_tests - failed_dns_tests) / all_tests 
+    if all_tests:
+        percent_of_success = 100.0 * (all_tests - failed_dns_tests) / all_tests
+    else:
+        percent_of_success = 0.0
+
     yield "<html><head><title></title></head><body>"
     yield "Percent of success: %.2f <br/>" % percent_of_success
     yield "<table><tr>"
